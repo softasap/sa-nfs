@@ -1,0 +1,71 @@
+---
+  - name: NFS | Include OS-specific variables.
+    include_vars: "{{ item }}"
+    with_first_found:
+      - files:
+          - "{{ ansible_distribution }}.yml"
+          - "{{ ansible_os_family }}-{{ ansible_distribution_major_version }}.yml"
+          - "{{ ansible_os_family }}.yml"
+    tags:
+      - always
+      - nfs
+
+  - block:
+
+      - name: NFS | Ensure utilities are installed.
+        package: name=nfs-utils state=present
+        become: yes
+        tags:
+          - nfs      
+
+      - name: NFS | Ensure rpcbind is running as configured.
+        service:
+          name: rpcbind
+          state: "{{ nfs_rpcbind_state }}"
+          enabled: "{{ nfs_rpcbind_enabled }}"
+        become: yes
+        tags:
+          - nfs      
+
+    when: ansible_os_family == 'RedHat'
+
+  - block:  
+
+      - name: NFS | Ensure utilities are installed.
+        apt:
+          name:
+            - nfs-common
+            - nfs-kernel-server
+          state: present
+        become: yes
+        tags:
+          - nfs      
+
+
+    when: ansible_os_family == 'Debian'
+
+  - name: NFS | Ensure directories to export exist
+    file: 'path="{{ item.strip().split()[0] }}" state=directory'
+    with_items: "{{ nfs_exports | default([]) }}"
+    become: yes
+    tags:
+      - nfs      
+
+
+  - name: NFS | template exports file.
+    template:
+      src: exports.j2
+      dest: /etc/exports
+      owner: root
+      group: root
+      mode: 0644
+    become: yes
+    tags:
+      - nfs      
+
+  - name: NFS | Ensure nfs is running.
+    service: "name={{ nfs_server_daemon }} state=restarted enabled=yes"
+    when: nfs_exports|length and docker_test is not defined
+    become: yes
+    tags:
+      - nfs      
