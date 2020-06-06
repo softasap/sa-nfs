@@ -1,2 +1,7 @@
 ---
 # defaults file for sa-nfs
+
+nfs_exports: []
+
+nfs_rpcbind_state: started
+nfs_rpcbind_enabled: true
