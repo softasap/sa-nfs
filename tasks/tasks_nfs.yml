@@ -11,7 +11,6 @@
       - nfs
 
   - block:
-
       - name: NFS | Ensure utilities are installed.
         package: name=nfs-utils state=present
         become: yes
@@ -26,11 +25,9 @@
         become: yes
         tags:
           - nfs
-
     when: ansible_os_family == 'RedHat'
 
   - block:
-
       - name: NFS | Ensure utilities are installed.
         apt:
           name:
@@ -40,17 +37,17 @@
         become: yes
         tags:
           - nfs
-
-
     when: ansible_os_family == 'Debian'
 
   - name: NFS | Ensure directories to export exist
-    file: 'path="{{ item.strip().split()[0] }}" state=directory'
+    file:
+      path: "{{ item.strip().split()[0] }}"
+      state: directory
+      mode: '0755'
     with_items: "{{ nfs_exports | default([]) }}"
     become: yes
     tags:
       - nfs
-
 
   - name: NFS | template exports file.
     template:
@@ -64,7 +61,10 @@
       - nfs
 
   - name: NFS | Ensure nfs is running.
-    service: "name={{ nfs_server_daemon }} state=restarted enabled=yes"
+    service:
+      name: "{{ nfs_server_daemon }}"
+      state: restarted
+      enabled: yes
     when: nfs_exports|length and docker_test is not defined
     become: yes
     tags:
